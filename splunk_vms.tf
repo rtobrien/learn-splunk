@@ -8,6 +8,7 @@ resource "tls_private_key" "splunk" {
 }
 output "tls_private_key" {
   value = tls_private_key.splunk.private_key_pem
+  sensitive = true
 }
 
 # ====================================================================================
@@ -27,7 +28,7 @@ resource "azurerm_linux_virtual_machine" "splunk" {
 
   admin_ssh_key {
     username                            = var.username
-    public_key                          = tls_private_key.spunk.public_key_openssh
+    public_key                          = tls_private_key.splunk.public_key_openssh
   }
 
   source_image_reference {
@@ -44,7 +45,7 @@ resource "azurerm_linux_virtual_machine" "splunk" {
   }
 
   tags                                  = var.common_tags
-  depends_on                            = [azurerm_resource_group.rg, azurerm_network_interface.splunk]
+  depends_on                            = [azurerm_resource_group.rg, azurerm_network_interface.splunk, tls_private_key.splunk]
 }
 
 /* resource "azurerm_virtual_machine_extension" "splunk" {

@@ -13,7 +13,7 @@ resource "azurerm_virtual_network" "vnet" {
 }
 
 resource "azurerm_subnet" "subnet" {
-  count = 2
+  count = var.instance_count
   name           = "subnet${count.index + 1}"
   address_prefixes = ["10.0.${count.index}.0/24"]
   virtual_network_name = var.vnet_name
@@ -38,7 +38,7 @@ resource "azurerm_subnet" "subnet" {
 # ====================================================================================
 
 resource "azurerm_network_security_group" "nsg" {
-  name                = "cass-nsg"
+  name                = "splunk-nsg"
   location            = var.location
   resource_group_name = var.rg_name
 
@@ -68,7 +68,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg-assoc" {
 
 resource "azurerm_public_ip" "pip" {
   count               = var.instance_count
-  name                = "cass-pip-0${count.index}"
+  name                = "splunk-pip-0${count.index}"
   resource_group_name = var.rg_name
   location            = var.location
   allocation_method   = "Dynamic"
@@ -82,14 +82,14 @@ resource "azurerm_public_ip" "pip" {
 # Create NICs
 # ====================================================================================
 
-resource "azurerm_network_interface" "cass" {
+resource "azurerm_network_interface" "splunk" {
   count                          = var.instance_count
-  name                           = "cass-0${count.index + 1}-nic"
+  name                           = "splunk-0${count.index + 1}-nic"
   location                       = var.location
   resource_group_name            = var.rg_name
 
   ip_configuration {
-    name                         = "cass-ipconfig-0${count.index + 1}"
+    name                         = "splunk-ipconfig-0${count.index + 1}"
     subnet_id                    = azurerm_subnet.subnet[count.index % 2].id
     private_ip_address_allocation= "static"
     private_ip_address           = "10.0.${count.index % 2}.${69 + count.index}"
