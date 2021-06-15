@@ -23,6 +23,12 @@ variable "instance_count" {
     default = 2
 }
 
+variable "win_instance_count" {
+    description = "How many windows servers to spin up"
+    type = number
+    default = 2
+}
+
 # ====================================================================================
 # Network
 # ====================================================================================

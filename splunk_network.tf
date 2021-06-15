@@ -53,10 +53,22 @@ resource "azurerm_network_security_group" "nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
+    security_rule {
+    name                       = "rdp-inbound"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "TCP"
+    source_port_range          = "*"
+    destination_port_range     = "3389"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "nsg-assoc" {
-  count = 2
+  count = var.instance_count
   subnet_id                 = azurerm_subnet.subnet[count.index].id
   network_security_group_id = azurerm_network_security_group.nsg.id
   depends_on = [azurerm_network_security_group.nsg]
@@ -66,9 +78,21 @@ resource "azurerm_subnet_network_security_group_association" "nsg-assoc" {
 # Create PIPs
 # ====================================================================================
 
-resource "azurerm_public_ip" "pip" {
+resource "azurerm_public_ip" "lnx" {
   count               = var.instance_count
-  name                = "splunk-pip-0${count.index}"
+  name                = "linux-pip-0${count.index}"
+  resource_group_name = var.rg_name
+  location            = var.location
+  allocation_method   = "Dynamic"
+  tags = var.common_tags
+  depends_on = [
+    azurerm_resource_group.rg,
+    azurerm_virtual_network.vnet]
+}
+
+resource "azurerm_public_ip" "win" {
+  count               = var.instance_count
+  name                = "win-pip-0${count.index}"
   resource_group_name = var.rg_name
   location            = var.location
   allocation_method   = "Dynamic"
@@ -82,18 +106,33 @@ resource "azurerm_public_ip" "pip" {
 # Create NICs
 # ====================================================================================
 
-resource "azurerm_network_interface" "splunk" {
+resource "azurerm_network_interface" "lnx" {
   count                          = var.instance_count
-  name                           = "splunk-0${count.index + 1}-nic"
+  name                           = "lnx-0${count.index + 1}-nic"
   location                       = var.location
   resource_group_name            = var.rg_name
 
   ip_configuration {
-    name                         = "splunk-ipconfig-0${count.index + 1}"
+    name                         = "lnx-ipconfig-0${count.index + 1}"
     subnet_id                    = azurerm_subnet.subnet[count.index % 2].id
     private_ip_address_allocation= "static"
     private_ip_address           = "10.0.${count.index % 2}.${69 + count.index}"
-    public_ip_address_id         = azurerm_public_ip.pip[count.index].id
+    public_ip_address_id         = azurerm_public_ip.lnx[count.index].id
+  }
+}
+
+resource "azurerm_network_interface" "win" {
+  count                          = var.win_instance_count
+  name                           = "win-0${count.index + 1}-nic"
+  location                       = var.location
+  resource_group_name            = var.rg_name
+
+  ip_configuration {
+    name                         = "win-ipconfig-0${count.index + 1}"
+    subnet_id                    = azurerm_subnet.subnet[count.index % 2].id
+    private_ip_address_allocation= "static"
+    private_ip_address           = "10.0.${count.index % 2}.${69 + var.instance_count + count.index}"
+    public_ip_address_id         = azurerm_public_ip.win[count.index].id
   }
 }
 
@@ -101,6 +140,10 @@ resource "azurerm_network_interface" "splunk" {
 # Outputs
 # ====================================================================================
 
-output "pips" {
-  value = azurerm_public_ip.pip
+output "pips-lnx" {
+  value = azurerm_public_ip.lnx
+}
+
+output "pips-win" {
+  value = azurerm_public_ip.win
 }
