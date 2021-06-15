@@ -23,16 +23,6 @@ resource "azurerm_subnet" "subnet" {
   ]
 }
 
-# resource "azurerm_subnet" "subnet02" {
-#   name           = "subnet2"
-#   address_prefixes = ["10.0.1.0/24"]
-#   virtual_network_name = var.vnet_name
-#   resource_group_name = var.rg_name
-#   depends_on = [
-#     azurerm_virtual_network.vnet
-#   ]
-#   }
-
 # ====================================================================================
 # Create NSGs and Associations
 # ====================================================================================
@@ -41,6 +31,7 @@ resource "azurerm_network_security_group" "nsg" {
   name                = "splunk-nsg"
   location            = var.location
   resource_group_name = var.rg_name
+  depends_on          = [azurerm_resource_group.rg]
 
   security_rule {
     name                       = "ssh-inbound"
@@ -78,7 +69,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg-assoc" {
 # Create PIPs
 # ====================================================================================
 
-resource "azurerm_public_ip" "lnx" {
+/* resource "azurerm_public_ip" "lnx" {
   count               = var.instance_count
   name                = "linux-pip-0${count.index}"
   resource_group_name = var.rg_name
@@ -88,10 +79,10 @@ resource "azurerm_public_ip" "lnx" {
   depends_on = [
     azurerm_resource_group.rg,
     azurerm_virtual_network.vnet]
-}
+} */
 
 resource "azurerm_public_ip" "win" {
-  count               = var.instance_count
+  count               = var.win_instance_count
   name                = "win-pip-0${count.index}"
   resource_group_name = var.rg_name
   location            = var.location
@@ -106,21 +97,6 @@ resource "azurerm_public_ip" "win" {
 # Create NICs
 # ====================================================================================
 
-resource "azurerm_network_interface" "lnx" {
-  count                          = var.instance_count
-  name                           = "lnx-0${count.index + 1}-nic"
-  location                       = var.location
-  resource_group_name            = var.rg_name
-
-  ip_configuration {
-    name                         = "lnx-ipconfig-0${count.index + 1}"
-    subnet_id                    = azurerm_subnet.subnet[count.index % 2].id
-    private_ip_address_allocation= "static"
-    private_ip_address           = "10.0.${count.index % 2}.${69 + count.index}"
-    public_ip_address_id         = azurerm_public_ip.lnx[count.index].id
-  }
-}
-
 resource "azurerm_network_interface" "win" {
   count                          = var.win_instance_count
   name                           = "win-0${count.index + 1}-nic"
@@ -129,20 +105,16 @@ resource "azurerm_network_interface" "win" {
 
   ip_configuration {
     name                         = "win-ipconfig-0${count.index + 1}"
-    subnet_id                    = azurerm_subnet.subnet[count.index % 2].id
+    subnet_id                    = [element(azurerm_subnet.subnet.*.id, count.index)]
     private_ip_address_allocation= "static"
     private_ip_address           = "10.0.${count.index % 2}.${69 + var.instance_count + count.index}"
-    public_ip_address_id         = azurerm_public_ip.win[count.index].id
+    public_ip_address_id         = [element(azurerm_public_ip.win.*.id, count.index)]
   }
 }
 
 # ====================================================================================
 # Outputs
 # ====================================================================================
-
-output "pips-lnx" {
-  value = azurerm_public_ip.lnx
-}
 
 output "pips-win" {
   value = azurerm_public_ip.win
