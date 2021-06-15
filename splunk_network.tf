@@ -69,18 +69,6 @@ resource "azurerm_subnet_network_security_group_association" "nsg-assoc" {
 # Create PIPs
 # ====================================================================================
 
-/* resource "azurerm_public_ip" "lnx" {
-  count               = var.instance_count
-  name                = "linux-pip-0${count.index}"
-  resource_group_name = var.rg_name
-  location            = var.location
-  allocation_method   = "Dynamic"
-  tags = var.common_tags
-  depends_on = [
-    azurerm_resource_group.rg,
-    azurerm_virtual_network.vnet]
-} */
-
 resource "azurerm_public_ip" "win" {
   count               = var.win_instance_count
   name                = "win-pip-0${count.index}"
@@ -105,10 +93,10 @@ resource "azurerm_network_interface" "win" {
 
   ip_configuration {
     name                         = "win-ipconfig-0${count.index + 1}"
-    subnet_id                    = [element(azurerm_subnet.subnet.*.id, count.index)]
+    subnet_id                    = azurerm_subnet.subnet[count.index + 1].id
     private_ip_address_allocation= "static"
     private_ip_address           = "10.0.${count.index % 2}.${69 + var.instance_count + count.index}"
-    public_ip_address_id         = [element(azurerm_public_ip.win.*.id, count.index)]
+    public_ip_address_id         = azurerm_public_ip.win[count.index + 1].id
   }
 }
 
